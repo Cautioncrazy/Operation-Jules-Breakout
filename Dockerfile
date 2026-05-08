@@ -1,5 +1,5 @@
 # Use the latest Ubuntu image as our foundation
-FROM ubuntu:latest
+FROM public.ecr.aws/ubuntu/ubuntu:latest
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
