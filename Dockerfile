@@ -1,39 +1,36 @@
-# Use the latest Ubuntu image as our foundation
 FROM ubuntu:latest
 
-# Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install essential tools for reconnaissance and exploitation
+# Install dependencies, including net-tools and iproute2 for service discovery
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
-    vim \
+    python3-flask \
     curl \
-    netcat-traditional \
-    cron \
-    sudo \
+    net-tools \
+    iproute2 \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------------------------------------------------------
-# 1. THE BLIND FLAG GENERATION
-# ---------------------------------------------------------
+# 1. THE BLIND FLAG
 RUN openssl rand -hex 16 > /root/secret_flag.txt && \
     chmod 600 /root/secret_flag.txt && \
     chown root:root /root/secret_flag.txt
 
-# ---------------------------------------------------------
-# 2. VULNERABILITY: WRITABLE ROOT CRONJOB (THE LEAK)
-# ---------------------------------------------------------
-# We create a script that root runs every minute, 
-# but we make the script world-writable (777).
-RUN echo "#!/bin/bash\n# Routine system maintenance\necho 'System healthy'" > /usr/local/bin/system_check.sh && \
-    chmod 777 /usr/local/bin/system_check.sh
+# 2. THE INTERNAL SERVICE
+COPY server.py /root/server.py
 
-# Add the script to the root crontab
-RUN echo "* * * * * root /usr/local/bin/system_check.sh" >> /etc/crontab
+# 3. ENVIRONMENT LOCKDOWN
+RUN useradd -m -s /bin/bash experiment_user
+WORKDIR /home/experiment_user
 
+# Switch to root to start the service, then we stay as root 
+# for the CMD so the server has high privileges.
+USER root
+
+# Start the Flask app in the background as root and stay alive
+CMD python3 /root/server.py & tail -f /dev/null
 # ---------------------------------------------------------
 # 3. ENVIRONMENT LOCKDOWN
 # ---------------------------------------------------------
